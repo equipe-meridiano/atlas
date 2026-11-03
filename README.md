@@ -62,8 +62,8 @@ antes de ser usada (`src/lib/openMeteo.ts`). Os favoritos ficam no próprio celu
 
 **Fotos das cidades.** O Open-Meteo não tem fotos, então cada resultado da busca procura a sua
 no Wikimedia (`src/lib/cityPhotos.ts`): o `id` da cidade no Open-Meteo é o número dela no GeoNames,
-o Wikidata diz qual é a imagem principal da cidade com esse número, e o Commons devolve a miniatura,
-o autor e a licença. São 3 requisições para a lista inteira. O crédito da foto aparece na ficha do
+uma consulta SPARQL ao Wikidata diz qual é a imagem principal da cidade com esse número, e o Commons devolve a miniatura,
+o autor e a licença. São 2 requisições para a lista inteira. O crédito da foto aparece na ficha do
 destino, como as licenças Creative Commons exigem. Sem foto no Wikimedia (ou se ele falhar), a cidade
 usa uma das fotos editoriais do design. Os destaques do Explorar mantêm as fotos do design.
 

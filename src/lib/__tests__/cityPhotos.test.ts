@@ -4,37 +4,19 @@ import {
   findCityPhotos,
   formatCredit,
   parseCommonsImages,
-  parseWikidataEntities,
-  parseWikidataSearch,
+  parseSparqlImages,
   plainText,
 } from '../cityPhotos';
 import { parseStoredPlaces } from '../favorites';
 
-/** Respostas no formato das APIs do Wikimedia (formatversion=2). */
-const searchResponse = { query: { search: [{ ns: 0, title: 'Q1764' }, { ns: 0, title: 'Q597' }] } };
-
-const entitiesResponse = {
-  entities: {
-    Q1764: {
-      id: 'Q1764',
-      claims: {
-        P1566: [{ mainsnak: { datavalue: { value: '3413829' } }, rank: 'normal' }],
-        P18: [
-          { mainsnak: { datavalue: { value: 'Velha.jpg' } }, rank: 'deprecated' },
-          { mainsnak: { datavalue: { value: 'Reykjavik_skyline.jpg' } }, rank: 'normal' },
-        ],
-      },
-    },
-    Q597: {
-      id: 'Q597',
-      claims: {
-        P1566: [{ mainsnak: { datavalue: { value: '2267057' } }, rank: 'normal' }],
-        P18: [
-          { mainsnak: { datavalue: { value: 'Lisboa A.jpg' } }, rank: 'normal' },
-          { mainsnak: { datavalue: { value: 'Lisboa B.jpg' } }, rank: 'preferred' },
-        ],
-      },
-    },
+/** Respostas no formato das APIs do Wikimedia. */
+const sparqlResponse = {
+  results: {
+    bindings: [
+      { gn: { value: '3413829' }, img: { value: 'http://commons.wikimedia.org/wiki/Special:FilePath/Reykjavik_skyline.jpg' } },
+      { gn: { value: '3413829' }, img: { value: 'http://commons.wikimedia.org/wiki/Special:FilePath/Outra.jpg' } },
+      { gn: { value: '2267057' }, img: { value: 'http://commons.wikimedia.org/wiki/Special:FilePath/Lisboa%20B.jpg' } },
+    ],
   },
 };
 
@@ -76,15 +58,11 @@ function mockWikimedia(responses: unknown[]) {
 }
 
 describe('parsers do Wikimedia', () => {
-  it('lê os itens encontrados no Wikidata', () => {
-    expect(parseWikidataSearch(searchResponse)).toEqual(['Q1764', 'Q597']);
-    expect(() => parseWikidataSearch({})).toThrow();
-  });
-
-  it('escolhe a imagem preferida e ignora a obsoleta', () => {
-    const files = parseWikidataEntities(entitiesResponse);
+  it('lê o arquivo da imagem de cada GeoNames ID', () => {
+    const files = parseSparqlImages(sparqlResponse);
     expect(files.get('3413829')).toBe('Reykjavik_skyline.jpg');
     expect(files.get('2267057')).toBe('Lisboa B.jpg');
+    expect(() => parseSparqlImages({})).toThrow();
   });
 
   it('lê miniatura e crédito do Commons, sem HTML', () => {
@@ -103,12 +81,12 @@ describe('parsers do Wikimedia', () => {
 });
 
 describe('findCityPhotos', () => {
-  it('faz 3 requisições para a lista toda e liga cada foto à sua cidade', async () => {
-    const urls = mockWikimedia([searchResponse, entitiesResponse, commonsResponse]);
+  it('faz 2 requisições para a lista toda e liga cada foto à sua cidade', async () => {
+    const urls = mockWikimedia([sparqlResponse, commonsResponse]);
     const photos = await findCityPhotos(['3413829', '2267057']);
 
-    expect(urls).toHaveLength(3);
-    expect(decodeURIComponent(urls[0])).toContain('haswbstatement:P1566=3413829|P1566=2267057');
+    expect(urls).toHaveLength(2);
+    expect(decodeURIComponent(urls[0].replace(/\+/g, ' '))).toContain('VALUES ?gn { "3413829" "2267057" }');
     expect(photos.get('3413829')?.url).toBe('https://upload.wikimedia.org/thumb/reykjavik-1200.jpg');
     // A foto de Lisboa não existe no Commons: a cidade fica sem foto real.
     expect(photos.has('2267057')).toBe(false);

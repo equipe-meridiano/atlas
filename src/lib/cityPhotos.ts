@@ -9,15 +9,17 @@ import { ApiError, getJson, isApiError } from './http';
  * da cidade no GeoNames (um cadastro mundial de lugares). O Wikidata, a base de dados
  * da Wikipédia, guarda esse mesmo número e a foto principal de cada cidade. O caminho é:
  *
- * 1. Wikidata, busca: qual item tem este GeoNames ID?            → ex.: Q1764
- * 2. Wikidata, item: qual é a imagem principal (propriedade P18)? → "Reykjavík ....jpg"
- * 3. Wikimedia Commons: endereço da miniatura, autor e licença da foto.
+ * 1. Wikidata (consulta SPARQL): qual item tem este GeoNames ID (P1566) e qual é a
+ *    imagem principal dele (P18)?                                   → "Sao Paulo ....jpg"
+ * 2. Wikimedia Commons: endereço da miniatura, autor e licença da foto.
  *
- * Tudo em lote: 3 requisições servem para a lista inteira de resultados.
+ * Tudo em lote: 2 requisições servem para a lista inteira de resultados.
+ * (A busca comum do Wikidata não indexa códigos externos como o GeoNames ID,
+ * por isso a consulta SPARQL, que lê os dados diretamente.)
  * Buscar pelo número, e não pelo nome, evita trocar "Lagos, Portugal" por "Lagos, Nigéria".
  */
 
-const WIKIDATA_API = 'https://www.wikidata.org/w/api.php';
+const WIKIDATA_SPARQL = 'https://query.wikidata.org/sparql';
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
 
 /** O Wikimedia pede que todo app se identifique nas requisições. */
@@ -54,45 +56,27 @@ function query(base: string, params: Record<string, string>): string {
   return `${base}?${search.toString()}`;
 }
 
-// ---------- passo 1: GeoNames ID → itens do Wikidata ----------
+// ---------- passo 1: GeoNames ID → arquivo da imagem principal ----------
 
-export function parseWikidataSearch(json: unknown): string[] {
-  if (!isObject(json) || !isObject(json.query) || !Array.isArray(json.query.search)) {
-    throw new ApiError('invalid', 'Busca do Wikidata em formato inesperado.');
-  }
-  return json.query.search
-    .map((hit) => (isObject(hit) ? hit.title : undefined))
-    .filter((title): title is string => typeof title === 'string' && /^Q\d+$/.test(title));
+export function buildSparql(ids: string[]): string {
+  const values = ids.map((id) => `"${id}"`).join(' ');
+  return `SELECT ?gn ?img WHERE { VALUES ?gn { ${values} } ?item wdt:P1566 ?gn ; wdt:P18 ?img . }`;
 }
 
-// ---------- passo 2: itens → nome do arquivo da imagem principal ----------
-
-type Claim = { rank?: unknown; mainsnak?: { datavalue?: { value?: unknown } } };
-
-/** Valor da afirmação mais confiável: a marcada como "preferred"; nunca uma "deprecated". */
-function bestValue(claims: unknown): string | undefined {
-  if (!Array.isArray(claims)) return undefined;
-  const usable = (claims as Claim[]).filter((claim) => isObject(claim) && claim.rank !== 'deprecated');
-  const chosen = usable.find((claim) => claim.rank === 'preferred') ?? usable[0];
-  const value = chosen?.mainsnak?.datavalue?.value;
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-/** Devolve um mapa GeoNames ID → nome do arquivo no Commons. */
-export function parseWikidataEntities(json: unknown): Map<string, string> {
-  if (!isObject(json) || !isObject(json.entities)) {
-    throw new ApiError('invalid', 'Itens do Wikidata em formato inesperado.');
+/** Devolve um mapa GeoNames ID → nome do arquivo no Commons (a primeira imagem de cada um). */
+export function parseSparqlImages(json: unknown): Map<string, string> {
+  if (!isObject(json) || !isObject(json.results) || !Array.isArray(json.results.bindings)) {
+    throw new ApiError('invalid', 'Resposta do Wikidata em formato inesperado.');
   }
   const files = new Map<string, string>();
-  for (const entity of Object.values(json.entities)) {
-    if (!isObject(entity) || !isObject(entity.claims)) continue;
-    const file = bestValue(entity.claims.P18);
-    const geonamesClaims = entity.claims.P1566;
-    if (!file || !Array.isArray(geonamesClaims)) continue;
-    for (const claim of geonamesClaims as Claim[]) {
-      const id = claim?.mainsnak?.datavalue?.value;
-      if (typeof id === 'string' && !files.has(id)) files.set(id, file);
-    }
+  for (const row of json.results.bindings) {
+    if (!isObject(row) || !isObject(row.gn) || !isObject(row.img)) continue;
+    const id = row.gn.value;
+    const img = row.img.value;
+    if (typeof id !== 'string' || typeof img !== 'string' || files.has(id)) continue;
+    // A imagem vem como ".../Special:FilePath/Nome%20do%20arquivo.jpg".
+    const name = decodeURIComponent(img.split('/Special:FilePath/')[1] ?? '');
+    if (name) files.set(id, name);
   }
   return files;
 }
@@ -168,24 +152,8 @@ export async function findCityPhotos(geonamesIds: string[], signal?: AbortSignal
 
   const options = { signal, timeoutMs: STEP_TIMEOUT_MS, headers: WIKIMEDIA_HEADERS };
 
-  const search = await getJson(
-    query(WIKIDATA_API, {
-      action: 'query',
-      list: 'search',
-      srsearch: `haswbstatement:${ids.map((id) => `P1566=${id}`).join('|')}`,
-      srlimit: '50',
-      srprop: '',
-    }),
-    options,
-  );
-  const items = parseWikidataSearch(search);
-  if (items.length === 0) return result;
-
-  const entities = await getJson(
-    query(WIKIDATA_API, { action: 'wbgetentities', ids: items.join('|'), props: 'claims' }),
-    options,
-  );
-  const files = parseWikidataEntities(entities);
+  const sparql = new URLSearchParams({ query: buildSparql(ids), format: 'json' });
+  const files = parseSparqlImages(await getJson(`${WIKIDATA_SPARQL}?${sparql.toString()}`, options));
   const wanted = ids.filter((id) => files.has(id));
   if (wanted.length === 0) return result;
 
