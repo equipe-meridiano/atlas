@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import type { Place } from '@/data/place';
+import { attachCityPhotos } from './cityPhotos';
 import { isApiError } from './http';
 import { searchCities } from './openMeteo';
 import { useDebouncedValue } from './useDebouncedValue';
@@ -18,6 +19,7 @@ export type SearchState =
 
 /**
  * Busca de cidades com debounce de 350ms e cancelamento.
+ * Depois do Open-Meteo, procura a foto de cada cidade no Wikimedia (ver cityPhotos.ts).
  * Cada nova busca cancela a anterior (AbortController), para que uma resposta
  * atrasada de "Rey" nunca apareça por cima do resultado de "Reykjavík".
  */
@@ -36,6 +38,7 @@ export function useCitySearch(text: string) {
     setState({ status: 'loading', query });
 
     searchCities(query, controller.signal)
+      .then((places) => attachCityPhotos(places, controller.signal))
       .then((results) => {
         setState(results.length > 0 ? { status: 'success', query, results } : { status: 'empty', query });
       })

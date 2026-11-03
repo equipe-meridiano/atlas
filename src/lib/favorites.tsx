@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import type { Place } from '@/data/place';
+import { isSafePhotoUrl, type Place } from '@/data/place';
 
 /**
  * Lugares salvos, guardados no próprio celular com AsyncStorage
@@ -25,7 +25,7 @@ export function parseStoredPlaces(raw: string | null): Place[] {
   try {
     const data: unknown = JSON.parse(raw);
     if (!Array.isArray(data)) return [];
-    return data.filter(
+    const places = data.filter(
       (item): item is Place =>
         typeof item === 'object' &&
         item !== null &&
@@ -37,6 +37,12 @@ export function parseStoredPlaces(raw: string | null): Place[] {
         typeof item.longitude === 'number' &&
         (item.photo === 'montanhas' || item.photo === 'lago'),
     );
+    // Uma foto salva com endereço estranho é descartada; o destino volta para a foto do design.
+    return places.map((place) => {
+      if (place.photoUrl === undefined || isSafePhotoUrl(place.photoUrl)) return place;
+      const { photoUrl: _ignored, photoCredit: _credit, ...rest } = place;
+      return rest;
+    });
   } catch {
     return [];
   }

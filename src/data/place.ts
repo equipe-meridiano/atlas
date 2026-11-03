@@ -12,10 +12,20 @@ export type Place = {
   /** Fuso horário IANA, ex.: "Atlantic/Reykjavik". */
   timezone: string;
   isCapital: boolean;
+  /** Foto do design usada quando a cidade não tem foto própria (ou ela não carrega). */
   photo: PhotoKey;
+  /** Foto real da cidade no Wikimedia Commons, quando existe. */
+  photoUrl?: string;
+  /** Autor e licença da foto real, exibidos na ficha do destino. */
+  photoCredit?: string;
   /** Frase editorial mostrada na ficha do destino. */
   tagline?: string;
 };
+
+/** Só aceitamos fotos por HTTPS (vale para parâmetros de rota e dados salvos). */
+export function isSafePhotoUrl(value: unknown): value is string {
+  return typeof value === 'string' && value.startsWith('https://');
+}
 
 /** A quebra de linha repete a do Figma. */
 export const defaultTagline = 'Um ponto de partida\npara novos horizontes.';
@@ -64,6 +74,8 @@ export type PlaceParams = {
   fuso: string;
   capital: '0' | '1';
   foto: PhotoKey;
+  fotoUrl?: string;
+  credito?: string;
   frase?: string;
 };
 
@@ -78,6 +90,8 @@ export function placeToParams(place: Place): PlaceParams {
     fuso: place.timezone,
     capital: place.isCapital ? '1' : '0',
     foto: place.photo,
+    ...(place.photoUrl ? { fotoUrl: place.photoUrl } : {}),
+    ...(place.photoCredit ? { credito: place.photoCredit } : {}),
     ...(place.tagline ? { frase: place.tagline } : {}),
   };
 }
@@ -102,6 +116,7 @@ export function placeFromParams(params: RawParams): Place | null {
   if (!Number.isFinite(latitude) || Math.abs(latitude) > 90) return null;
   if (!Number.isFinite(longitude) || Math.abs(longitude) > 180) return null;
   if (photo !== 'montanhas' && photo !== 'lago') return null;
+  const photoUrl = single(params.fotoUrl);
 
   return {
     id,
@@ -113,6 +128,7 @@ export function placeFromParams(params: RawParams): Place | null {
     timezone,
     isCapital: single(params.capital) === '1',
     photo,
+    ...(isSafePhotoUrl(photoUrl) ? { photoUrl, photoCredit: single(params.credito) } : {}),
     tagline: single(params.frase),
   };
 }
