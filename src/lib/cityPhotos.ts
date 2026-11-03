@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 import { ApiError, getJson, isApiError } from './http';
 
 /**
@@ -19,9 +21,15 @@ const WIKIDATA_API = 'https://www.wikidata.org/w/api.php';
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
 
 /** O Wikimedia pede que todo app se identifique nas requisições. */
-export const WIKIMEDIA_HEADERS = {
-  'Api-User-Agent': 'Atlas/1.0 (https://github.com/equipe-meridiano/atlas)',
-};
+const APP_AGENT = 'Atlas/1.0 (https://github.com/equipe-meridiano/atlas)';
+
+/**
+ * O Wikimedia bloqueia requisições sem identificação. No celular dá para mandar o
+ * User-Agent de verdade (sem ele o Android envia "okhttp", que é recusado);
+ * no navegador isso é proibido, então vai o Api-User-Agent.
+ */
+export const WIKIMEDIA_HEADERS: Record<string, string> =
+  Platform.OS === 'web' ? { 'Api-User-Agent': APP_AGENT } : { 'User-Agent': APP_AGENT, 'Api-User-Agent': APP_AGENT };
 
 /** Largura da miniatura: cobre a tela inteira em celulares de alta densidade (390pt × 3). */
 const THUMB_WIDTH = 1200;
@@ -223,6 +231,8 @@ export async function attachCityPhotos<T extends { id: string }>(
     });
   } catch (error) {
     if (isApiError(error, 'aborted')) throw error;
+    // Aparece no terminal do Expo: ajuda a descobrir por que as fotos não vieram.
+    console.warn('[Atlas] Fotos do Wikimedia indisponíveis:', error instanceof Error ? error.message : error);
     return places;
   }
 }
