@@ -4,7 +4,7 @@ App mobile para descobrir cidades e consultar o clima antes de viajar.
 Projeto da **Equipe Meridiano**, construído a partir do design "Atlas v1.0" no Figma.
 
 **Stack:** React Native + TypeScript + Expo (SDK 58), com Expo Router para a navegação.
-**Dados:** [Open-Meteo](https://open-meteo.com), gratuito e sem chave de API.
+**Dados:** [Open-Meteo](https://open-meteo.com) para cidades e clima, e [Wikimedia](https://commons.wikimedia.org) para as fotos das cidades. Os dois são gratuitos e sem chave de API.
 
 ## Como rodar
 
@@ -60,6 +60,13 @@ assets/
 (`/v1/forecast`, `current` + `daily`, `timezone=auto`). Toda resposta é validada campo a campo
 antes de ser usada (`src/lib/openMeteo.ts`). Os favoritos ficam no próprio celular (AsyncStorage).
 
+**Fotos das cidades.** O Open-Meteo não tem fotos, então cada resultado da busca procura a sua
+no Wikimedia (`src/lib/cityPhotos.ts`): o `id` da cidade no Open-Meteo é o número dela no GeoNames,
+o Wikidata diz qual é a imagem principal da cidade com esse número, e o Commons devolve a miniatura,
+o autor e a licença. São 3 requisições para a lista inteira. O crédito da foto aparece na ficha do
+destino, como as licenças Creative Commons exigem. Sem foto no Wikimedia (ou se ele falhar), a cidade
+usa uma das fotos editoriais do design. Os destaques do Explorar mantêm as fotos do design.
+
 **Busca.** Espera 350ms depois da última tecla (*debounce*) e cancela a busca anterior quando
 a pessoa continua digitando. Requisições têm timeout de 10s; sem internet, abre a tela 08.
 
@@ -74,7 +81,7 @@ fonte acompanha a escala do sistema, botões e imagens com rótulo para leitor d
 
 - A barra de status desenhada no Figma (9:41, 5G) é substituída pela barra real do celular.
 - Os textos "dados de demonstração" e "valores ilustrativos" viraram a fonte real ("Dados: Open-Meteo") e o horário local da leitura, porque agora os dados são reais.
-- A API não fornece fotos: os resultados alternam as duas fotos editoriais do design.
+- As cidades buscadas mostram a foto real do Wikimedia; as fotos editoriais do design ficam nos destaques e como reserva.
 - O "smart animate" do card foi aproximado por um dissolve com leve crescimento (96% → 100%).
 - Estados que o Figma não mostra e o app precisa: dica na busca vazia, skeleton de carregamento, erro do servidor e botão "Explorar destinos" quando não há nada salvo.
 
