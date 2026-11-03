@@ -8,11 +8,11 @@ export type PhotoKey = 'montanhas' | 'lago';
 
 export const photos: Record<PhotoKey, { source: ImageSource; alt: string }> = {
   montanhas: {
-    source: require('../../assets/images/destino-montanhas.png'),
+    source: require('../../assets/images/destino-montanhas.jpg'),
     alt: 'Foto ilustrativa: vale com montanhas nevadas e floresta de pinheiros',
   },
   lago: {
-    source: require('../../assets/images/destino-lago.png'),
+    source: require('../../assets/images/destino-lago.jpg'),
     alt: 'Foto ilustrativa: barco de madeira num lago entre montanhas',
   },
 };
