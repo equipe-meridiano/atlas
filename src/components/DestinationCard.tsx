@@ -1,10 +1,9 @@
-import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { Place } from '@/data/place';
-import { photos } from '@/data/photos';
 import { colors, radius, type } from '@/theme';
 import { FeedbackPressable } from './FeedbackPressable';
+import { PlacePhoto } from './PlacePhoto';
 import { Skeleton } from './Skeleton';
 
 type Props = {
@@ -22,12 +21,7 @@ export function DestinationCard({ place, onPress }: Props) {
       onPress={onPress}
       style={styles.card}
     >
-      <Image
-        source={photos[place.photo].source}
-        style={styles.photo}
-        contentFit="cover"
-        accessible={false}
-      />
+      <PlacePhoto place={place} style={styles.photo} decorative />
       <View style={styles.text}>
         <Text style={[type.cardTitle, styles.name]} numberOfLines={1}>
           {place.name}

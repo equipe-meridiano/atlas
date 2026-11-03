@@ -1,13 +1,12 @@
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BackLink, Button } from '@/components';
+import { PlacePhoto } from '@/components/PlacePhoto';
 import { FocusStatusBar } from '@/components/FocusStatusBar';
 import { PlaceNotFound } from '@/components/PlaceNotFound';
 import { defaultTagline, placeFromParams, placeToParams } from '@/data/place';
-import { photos } from '@/data/photos';
 import { useFavorites } from '@/lib/favorites';
 import { formatLatitude, formatLongitude } from '@/lib/format';
 import { colors, displayMaxScale, radius, screenPadding, type } from '@/theme';
@@ -25,14 +24,15 @@ export default function DestinationScreen() {
   if (!place) return <PlaceNotFound />;
 
   const saved = isSaved(place.id);
-  const photo = photos[place.photo];
+  // Foto real tem autor e licença; a foto do design é ilustrativa.
+  const credit = place.photoUrl && place.photoCredit ? place.photoCredit : 'Foto ilustrativa';
 
   return (
     <ScrollView style={styles.screen} bounces={false}>
       <FocusStatusBar style="light" />
 
       <View style={styles.photo}>
-        <Image source={photo.source} alt={photo.alt} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <PlacePhoto place={place} style={StyleSheet.absoluteFill} />
         <View style={[styles.scrim, { height: insets.top + 63 }]} />
         <View style={[styles.back, { top: insets.top + 8 }]}>
           <BackLink color={colors.white} onPress={() => router.back()} />
@@ -65,7 +65,7 @@ export default function DestinationScreen() {
           style={styles.secondary}
         />
 
-        <Text style={[type.note, styles.muted, styles.credit]}>Foto ilustrativa / dados: Open-Meteo</Text>
+        <Text style={[type.note, styles.muted, styles.credit]}>{`${credit} / dados: Open-Meteo`}</Text>
       </View>
     </ScrollView>
   );
@@ -73,7 +73,7 @@ export default function DestinationScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
-  photo: { height: PHOTO_HEIGHT },
+  photo: { height: PHOTO_HEIGHT, backgroundColor: colors.ink },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: colors.ink, opacity: 0.4 },
   back: { position: 'absolute', left: screenPadding },
   sheet: {
