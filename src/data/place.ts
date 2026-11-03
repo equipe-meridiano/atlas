@@ -17,7 +17,8 @@ export type Place = {
   tagline?: string;
 };
 
-export const defaultTagline = 'Um ponto de partida para novos horizontes.';
+/** A quebra de linha repete a do Figma. */
+export const defaultTagline = 'Um ponto de partida\npara novos horizontes.';
 
 /**
  * Destinos em destaque na tela Explorar (os mesmos do Figma).
