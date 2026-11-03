@@ -49,13 +49,16 @@ function numberArray(value: unknown, length: number): number[] | null {
 
 // ---------- geocoding ----------
 
-/** Alterna as duas fotos editoriais de forma estável: o mesmo destino sempre recebe a mesma. */
-function photoFor(id: number): PhotoKey {
-  return id % 2 === 0 ? 'montanhas' : 'lago';
+/**
+ * Alterna as duas fotos editoriais na lista: o 1º resultado recebe as montanhas (como no Figma),
+ * o 2º o lago, e assim por diante, para cards vizinhos nunca repetirem a foto.
+ */
+function photoFor(position: number): PhotoKey {
+  return position % 2 === 0 ? 'montanhas' : 'lago';
 }
 
-/** Converte um item da resposta em Place. Itens incompletos são descartados (null). */
-function parseGeocodingResult(item: unknown): Place | null {
+/** Converte um item da resposta em Place (sem foto ainda). Itens incompletos viram null. */
+function parseGeocodingResult(item: unknown): Omit<Place, 'photo'> | null {
   if (!isObject(item)) return null;
   const { id, name, latitude, longitude, timezone, country, admin1, feature_code } = item;
 
@@ -72,7 +75,6 @@ function parseGeocodingResult(item: unknown): Place | null {
     timezone,
     // PPLC é o código de "capital de país" no GeoNames, a base que o Open-Meteo usa.
     isCapital: feature_code === 'PPLC',
-    photo: photoFor(id),
   };
 }
 
@@ -82,7 +84,10 @@ export function parseGeocoding(json: unknown): Place[] {
   if (json.results === undefined) return [];
   if (!Array.isArray(json.results)) throw new ApiError('invalid', 'Lista de resultados inválida.');
 
-  return json.results.map(parseGeocodingResult).filter((place): place is Place => place !== null);
+  return json.results
+    .map(parseGeocodingResult)
+    .filter((place): place is Omit<Place, 'photo'> => place !== null)
+    .map((place, position) => ({ ...place, photo: photoFor(position) }));
 }
 
 export async function searchCities(name: string, signal?: AbortSignal): Promise<Place[]> {
