@@ -2,7 +2,8 @@ import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { Place } from '@/data/place';
-import { photos } from '@/data/photos';
+import { durations, transitionDuration, useReduceMotion } from '@/lib/motion';
+import { usePlacePhoto } from '@/lib/usePlacePhoto';
 import { colors, radius, type } from '@/theme';
 import { FeedbackPressable } from './FeedbackPressable';
 import { Skeleton } from './Skeleton';
@@ -14,6 +15,9 @@ type Props = {
 
 /** Componente "Destination / Editorial" do Figma: foto de 176, nome e país. */
 export function DestinationCard({ place, onPress }: Props) {
+  const photo = usePlacePhoto(place.id, place.name);
+  const reduceMotion = useReduceMotion();
+
   return (
     <FeedbackPressable
       accessibilityRole="button"
@@ -23,7 +27,12 @@ export function DestinationCard({ place, onPress }: Props) {
       style={styles.card}
     >
       <Image
-        source={photos[place.photo].source}
+        source={photo.source}
+        placeholder={photo.placeholder}
+        placeholderContentFit="cover"
+        onError={photo.onError}
+        transition={transitionDuration(durations.navegacao, reduceMotion)}
+        recyclingKey={place.id}
         style={styles.photo}
         contentFit="cover"
         accessible={false}

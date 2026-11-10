@@ -7,9 +7,10 @@ import { BackLink, Button } from '@/components';
 import { FocusStatusBar } from '@/components/FocusStatusBar';
 import { PlaceNotFound } from '@/components/PlaceNotFound';
 import { defaultTagline, placeFromParams, placeToParams } from '@/data/place';
-import { photos } from '@/data/photos';
 import { useFavorites } from '@/lib/favorites';
 import { formatLatitude, formatLongitude } from '@/lib/format';
+import { durations, transitionDuration, useReduceMotion } from '@/lib/motion';
+import { usePlacePhoto } from '@/lib/usePlacePhoto';
 import { colors, displayMaxScale, radius, screenPadding, type } from '@/theme';
 
 const PHOTO_HEIGHT = 370;
@@ -20,19 +21,29 @@ const SHEET_OVERLAP = 30;
 export default function DestinationScreen() {
   const insets = useSafeAreaInsets();
   const place = placeFromParams(useLocalSearchParams());
-  const { isSaved, toggle } = useFavorites();
+  const { isSaved, toggle, storageError } = useFavorites();
+  const photo = usePlacePhoto(place?.id ?? '', place?.name ?? '');
+  const reduceMotion = useReduceMotion();
 
   if (!place) return <PlaceNotFound />;
 
   const saved = isSaved(place.id);
-  const photo = photos[place.photo];
 
   return (
     <ScrollView style={styles.screen} bounces={false}>
       <FocusStatusBar style="light" />
 
       <View style={styles.photo}>
-        <Image source={photo.source} alt={photo.alt} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <Image
+          source={photo.source}
+          placeholder={photo.placeholder}
+          placeholderContentFit="cover"
+          onError={photo.onError}
+          transition={transitionDuration(durations.navegacao, reduceMotion)}
+          alt={photo.alt}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+        />
         <View style={[styles.scrim, { height: insets.top + 63 }]} />
         <View style={[styles.back, { top: insets.top + 8 }]}>
           <BackLink color={colors.white} onPress={() => router.back()} />
@@ -64,8 +75,15 @@ export default function DestinationScreen() {
           onPress={() => toggle(place)}
           style={styles.secondary}
         />
+        {storageError ? (
+          <Text style={[type.note, styles.muted, styles.warning]} accessibilityLiveRegion="polite">
+            {'Não foi possível guardar no dispositivo.\nOs salvos valem só até fechar o app.'}
+          </Text>
+        ) : null}
 
-        <Text style={[type.note, styles.muted, styles.credit]}>Foto ilustrativa / dados: Open-Meteo</Text>
+        <Text style={[type.note, styles.muted, styles.credit]}>
+          {photo.credit ? `Foto: ${photo.credit} / dados: Open-Meteo` : 'Foto ilustrativa / dados: Open-Meteo'}
+        </Text>
       </View>
     </ScrollView>
   );
@@ -91,5 +109,6 @@ const styles = StyleSheet.create({
   facts: { marginTop: 22 },
   primary: { marginTop: 37 },
   secondary: { marginTop: 12 },
+  warning: { marginTop: 12 },
   credit: { marginTop: 28 },
 });

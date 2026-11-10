@@ -1,7 +1,6 @@
-import type { PhotoKey } from './photos';
-
 /** Um destino do Atlas: o que a busca do Open-Meteo devolve, já no formato do app. */
 export type Place = {
+  /** ID do GeoNames, o mesmo que a busca do Open-Meteo devolve. Também localiza a foto. */
   id: string;
   name: string;
   country: string;
@@ -12,7 +11,6 @@ export type Place = {
   /** Fuso horário IANA, ex.: "Atlantic/Reykjavik". */
   timezone: string;
   isCapital: boolean;
-  photo: PhotoKey;
   /** Frase editorial mostrada na ficha do destino. */
   tagline?: string;
 };
@@ -23,21 +21,22 @@ export const defaultTagline = 'Um ponto de partida\npara novos horizontes.';
 /**
  * Destinos em destaque na tela Explorar (os mesmos do Figma).
  * Coordenadas e fusos são fixos; o clima é sempre buscado na API.
+ * Os ids são os do GeoNames, iguais aos da busca: salvar pelo destaque ou pela busca
+ * guarda o mesmo destino uma vez só.
  */
 export const featured = {
   hero: {
-    id: 'destaque-reykjavik',
+    id: '3413829',
     name: 'Reykjavík',
     country: 'Islândia',
     latitude: 64.1466,
     longitude: -21.9426,
     timezone: 'Atlantic/Reykjavik',
     isCapital: true,
-    photo: 'montanhas',
     tagline: defaultTagline,
   },
   discover: {
-    id: 'destaque-interlaken',
+    id: '2660253',
     name: 'Interlaken',
     country: 'Suíça',
     region: 'Berna',
@@ -45,7 +44,6 @@ export const featured = {
     longitude: 7.8632,
     timezone: 'Europe/Zurich',
     isCapital: false,
-    photo: 'lago',
     tagline: 'Lagos, montanhas e novos caminhos.',
   },
 } satisfies Record<string, Place>;
@@ -63,7 +61,6 @@ export type PlaceParams = {
   lon: string;
   fuso: string;
   capital: '0' | '1';
-  foto: PhotoKey;
   frase?: string;
 };
 
@@ -77,7 +74,6 @@ export function placeToParams(place: Place): PlaceParams {
     lon: String(place.longitude),
     fuso: place.timezone,
     capital: place.isCapital ? '1' : '0',
-    foto: place.photo,
     ...(place.tagline ? { frase: place.tagline } : {}),
   };
 }
@@ -96,12 +92,10 @@ export function placeFromParams(params: RawParams): Place | null {
   const timezone = single(params.fuso);
   const latitude = Number(single(params.lat));
   const longitude = Number(single(params.lon));
-  const photo = single(params.foto);
 
   if (!id || !name || !country || !timezone) return null;
   if (!Number.isFinite(latitude) || Math.abs(latitude) > 90) return null;
   if (!Number.isFinite(longitude) || Math.abs(longitude) > 180) return null;
-  if (photo !== 'montanhas' && photo !== 'lago') return null;
 
   return {
     id,
@@ -112,7 +106,6 @@ export function placeFromParams(params: RawParams): Place | null {
     longitude,
     timezone,
     isCapital: single(params.capital) === '1',
-    photo,
     tagline: single(params.frase),
   };
 }
