@@ -4,6 +4,7 @@ import {
   loadPlacePhoto,
   parseCommons,
   parseSparql,
+  parseWikipediaFile,
   resetPlacePhotoCache,
 } from '../placePhotos';
 
@@ -76,6 +77,7 @@ describe('dados do Commons', () => {
     const photos = parseCommons(commonsResponse, ['File:Reykjavík view.jpg', 'File:interlaken.jpg']);
     expect(photos.get('File:Reykjavík view.jpg')).toEqual({
       uri: 'https://upload.wikimedia.org/thumb/reykjavik-1280.jpg',
+      sourceUrl: 'https://commons.wikimedia.org/wiki/File%3AReykjav%C3%ADk%20view.jpg',
       credit: 'Ana & Bia (CC BY-SA 4.0), Wikimedia Commons',
     });
     expect(photos.get('File:interlaken.jpg')?.credit).toBe('Wikimedia Commons');
@@ -89,6 +91,23 @@ describe('dados do Commons', () => {
   it('monta o crédito com o que existir', () => {
     expect(formatCredit(undefined, 'CC0')).toBe('(CC0), Wikimedia Commons');
     expect(formatCredit('Fulano', undefined)).toBe('Fulano, Wikimedia Commons');
+  });
+});
+
+describe('alternativa da Wikipedia', () => {
+  const place = { name: 'São Paulo', latitude: -23.5475, longitude: -46.63611 };
+  const response = (title: string, lat: number, lon: number) => ({ query: { pages: [
+    { title, coordinates: [{ lat, lon }], pageimage: 'Sao_Paulo.jpg' },
+  ] } });
+
+  it('aceita a cidade com nome e coordenadas correspondentes', () => {
+    expect(parseWikipediaFile(response('São Paulo (cidade)', -23.55, -46.63), place)).toBe('Sao_Paulo.jpg');
+  });
+
+  it('recusa homônimos distantes e atrações próximas', () => {
+    expect(parseWikipediaFile(response('São Paulo', 10, 20), place)).toBeNull();
+    expect(parseWikipediaFile(response('Museu de São Paulo', -23.55, -46.63), place)).toBeNull();
+    expect(parseWikipediaFile(null, place)).toBeNull();
   });
 });
 
@@ -142,5 +161,22 @@ describe('loadPlacePhoto', () => {
     const fetchMock = mockApis();
     await expect(loadPlacePhoto('3413829')).resolves.not.toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('busca na Wikipedia quando o GeoNames não tem imagem e conserva o crédito do Commons', async () => {
+    const fetchMock = jest.fn(async (url: string) => {
+      const body = url.startsWith('https://query.wikidata.org/') ? { results: { bindings: [] } }
+        : url.startsWith('https://pt.wikipedia.org/') ? { query: { pages: [{
+          title: 'Interlaken', coordinates: [{ lat: 46.6833, lon: 7.85 }], pageimage: 'interlaken.jpg',
+        }] } } : commonsResponse;
+      return new Response(JSON.stringify(body), { status: 200 });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const location = { name: 'Interlaken', latitude: 46.6863, longitude: 7.8632 };
+    const photo = await loadPlacePhoto('2660253', location);
+    expect(photo?.uri).toBe('https://upload.wikimedia.org/thumb/interlaken-1280.jpg');
+    expect(photo?.sourceUrl).toContain('commons.wikimedia.org/wiki/');
+    await loadPlacePhoto('2660253', location);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

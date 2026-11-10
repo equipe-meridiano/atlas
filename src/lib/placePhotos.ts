@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import type { Place } from '@/data/place';
 
 import { getJson } from './http';
 
@@ -17,6 +18,7 @@ export type PlacePhoto = {
   uri: string;
   /** Autor e licença, ex.: "Fulano (CC BY-SA 4.0), Wikimedia Commons". */
   credit: string;
+  sourceUrl?: string;
 };
 
 const SPARQL_URL = 'https://query.wikidata.org/sparql';
@@ -124,6 +126,7 @@ export function parseCommons(json: unknown, requested: string[]): Map<string, Pl
     const metadata = isObject(info.extmetadata) ? info.extmetadata : {};
     byTitle.set(title, {
       uri,
+      sourceUrl: `https://commons.wikimedia.org/wiki/${encodeURIComponent(title)}`,
       credit: formatCredit(metadataValue(metadata, 'Artist'), metadataValue(metadata, 'LicenseShortName')),
     });
   }
@@ -173,6 +176,47 @@ async function fetchPhotos(ids: string[]): Promise<Map<string, PlacePhoto>> {
   return photos;
 }
 
+export type PhotoLocation = Pick<Place, 'name' | 'latitude' | 'longitude'>;
+
+// O GeoNames nem sempre está no mesmo item do Wikidata que contém a foto.
+// Uma página com o mesmo nome só é aceita se suas coordenadas também conferirem.
+export function parseWikipediaFile(json: unknown, place: PhotoLocation): string | null {
+  if (!isObject(json) || !isObject(json.query) || !Array.isArray(json.query.pages)) return null;
+  const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  for (const page of json.query.pages) {
+    if (!isObject(page) || !Array.isArray(page.coordinates)) continue;
+    const title = text(page.title)?.replace(/\s*\([^)]*\)$/, '');
+    const coordinate = page.coordinates[0];
+    if (!title || normalize(title) !== normalize(place.name) || !isObject(coordinate)) continue;
+    if (typeof coordinate.lat !== 'number' || typeof coordinate.lon !== 'number') continue;
+    const latDelta = (coordinate.lat - place.latitude) * Math.PI / 180;
+    const lonDelta = (coordinate.lon - place.longitude) * Math.PI / 180;
+    const a = Math.sin(latDelta / 2) ** 2 + Math.cos(place.latitude * Math.PI / 180)
+      * Math.cos(coordinate.lat * Math.PI / 180) * Math.sin(lonDelta / 2) ** 2;
+    const distance = 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, a)));
+    const file = text(page.pageimage);
+    if (distance <= 15 && file && /\.(jpe?g|png|webp)$/i.test(file)) return file;
+  }
+  return null;
+}
+
+async function fetchWikipediaPhoto(place: PhotoLocation): Promise<PlacePhoto | null> {
+  const query = new URLSearchParams({
+    action: 'query', format: 'json', formatversion: '2', origin: '*',
+    generator: 'search', gsrsearch: `intitle:"${place.name.replace(/"/g, '')}"`,
+    gsrnamespace: '0', gsrlimit: '5', prop: 'coordinates|pageimages', piprop: 'name', pilicense: 'free',
+  });
+  const file = parseWikipediaFile(await getJson(`https://pt.wikipedia.org/w/api.php?${query}`, { headers }), place);
+  if (!file) return null;
+  const title = `File:${file}`;
+  const commons = new URLSearchParams({
+    action: 'query', format: 'json', formatversion: '2', origin: '*', prop: 'imageinfo',
+    iiprop: 'url|extmetadata', iiurlwidth: String(THUMB_WIDTH),
+    iiextmetadatafilter: 'Artist|LicenseShortName', titles: title,
+  });
+  return parseCommons(await getJson(`${COMMONS_API_URL}?${commons}`, { headers }), [title]).get(title) ?? null;
+}
+
 type Resolve = (photo: PlacePhoto | null) => void;
 
 /** Fotos já resolvidas ou a caminho. `null` = a cidade não tem foto no Wikimedia. */
@@ -203,7 +247,7 @@ async function flush() {
 }
 
 /** Foto real de um destino. Nunca rejeita: em qualquer falha devolve null. */
-export function loadPlacePhoto(placeId: string): Promise<PlacePhoto | null> {
+function loadPrimaryPhoto(placeId: string): Promise<PlacePhoto | null> {
   if (!isGeoNamesId(placeId)) return Promise.resolve(null);
 
   const cached = cache.get(placeId);
@@ -215,9 +259,27 @@ export function loadPlacePhoto(placeId: string): Promise<PlacePhoto | null> {
   return promise;
 }
 
+const fallbackCache = new Map<string, Promise<PlacePhoto | null>>();
+
+export async function loadPlacePhoto(placeId: string, location?: PhotoLocation): Promise<PlacePhoto | null> {
+  const primary = await loadPrimaryPhoto(placeId);
+  if (primary || !location || !isGeoNamesId(placeId)) return primary;
+  const key = `${placeId}:${location.name}:${location.latitude}:${location.longitude}`;
+  let request = fallbackCache.get(key);
+  if (!request) {
+    request = fetchWikipediaPhoto(location).catch(() => {
+      fallbackCache.delete(key);
+      return null;
+    });
+    fallbackCache.set(key, request);
+  }
+  return request;
+}
+
 /** Só para testes: esquece o que foi carregado. */
 export function resetPlacePhotoCache() {
   cache.clear();
+  fallbackCache.clear();
   pending = new Map();
   if (timer) clearTimeout(timer);
   timer = null;

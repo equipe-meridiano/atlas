@@ -26,7 +26,7 @@ export const easeOut = Easing.bezier(0.25, 0.1, 0.25, 1);
 
 /** Diz se a pessoa pediu "Reduzir movimento" nas configurações de acessibilidade. */
 export function useReduceMotion(): boolean {
-  const [reduce, setReduce] = useState(false);
+  const [reduce, setReduce] = useState(true);
 
   useEffect(() => {
     let active = true;

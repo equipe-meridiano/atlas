@@ -4,7 +4,11 @@ App mobile para descobrir cidades e consultar o clima antes de viajar.
 Projeto da **Equipe Meridiano**, construído a partir do design "Atlas v1.0" no Figma.
 
 **Stack:** React Native + TypeScript + Expo (SDK 58), com Expo Router para a navegação.
-**Dados:** [Open-Meteo](https://open-meteo.com) para busca e clima, e [Wikimedia](https://www.wikidata.org) para as fotos dos destinos. Todos gratuitos e sem chave de API.
+**Dados:** [Open-Meteo](https://open-meteo.com) para busca e clima, e [Wikimedia](https://www.wikidata.org) para as fotos dos destinos. Sem chave de API. O endpoint gratuito do Open-Meteo é destinado a avaliação/prototipagem e uso não comercial; consulte os [termos e limites](https://open-meteo.com/en/pricing) antes de publicar comercialmente.
+
+As fotos são associadas pelo ID GeoNames do destino no Wikidata. Se não houver imagem ou o serviço falhar, o app consulta a Wikipedia em português e aceita apenas páginas com o mesmo nome e coordenadas a até 15 km do destino. O Commons fornece a miniatura, autor e licença; a ficha inclui um botão para a página original. Não há garantia de cobertura de todas as cidades: imagens de reserva são identificadas como ilustrativas. As fotos são registros da cidade, não imagens ao vivo do clima.
+
+A ficha do destino busca foto e clima independentemente. O clima vem das coordenadas da cidade, em Celsius, com horário local da leitura. Os valores atuais do Open-Meteo são estimativas meteorológicas por modelos, não medições de um termômetro em cada cidade.
 
 ## Como rodar
 

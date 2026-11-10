@@ -129,6 +129,8 @@ export async function getForecast(
     current: 'temperature_2m,apparent_temperature,weather_code,wind_speed_10m',
     daily: 'weather_code,temperature_2m_max,temperature_2m_min',
     timezone: 'auto',
+    temperature_unit: 'celsius',
+    wind_speed_unit: 'kmh',
     forecast_days: '3',
   });
   const json = await getJson(`${FORECAST_URL}?${query.toString()}`, { signal });
