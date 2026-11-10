@@ -6,9 +6,9 @@ Projeto da **Equipe Meridiano**, construído a partir do design "Atlas v1.0" no 
 **Stack:** React Native + TypeScript + Expo (SDK 58), com Expo Router para a navegação.
 **Dados:** [Open-Meteo](https://open-meteo.com) para busca e clima, e [Wikimedia](https://www.wikidata.org) para as fotos dos destinos. Sem chave de API. O endpoint gratuito do Open-Meteo é destinado a avaliação/prototipagem e uso não comercial; consulte os [termos e limites](https://open-meteo.com/en/pricing) antes de publicar comercialmente.
 
-As fotos são associadas pelo ID GeoNames do destino no Wikidata. Se não houver imagem ou o serviço falhar, o app consulta a Wikipedia em português e aceita apenas páginas com o mesmo nome e coordenadas a até 15 km do destino. O Commons fornece a miniatura, autor e licença; a ficha inclui um botão para a página original. Não há garantia de cobertura de todas as cidades: imagens de reserva são identificadas como ilustrativas. As fotos são registros da cidade, não imagens ao vivo do clima.
+As fotos são associadas pelo ID GeoNames do destino no Wikidata. Se não houver imagem ou o serviço falhar, o app consulta a Wikipedia em português e aceita apenas páginas com o mesmo nome e coordenadas a até 15 km do destino. O serviço conserva os metadados de autor e licença do Commons. Não há garantia de cobertura de todas as cidades; nesses casos aparecem as imagens editoriais de reserva. As fotos são registros da cidade, não imagens ao vivo do clima.
 
-A ficha do destino busca foto e clima independentemente. O clima vem das coordenadas da cidade, em Celsius, com horário local da leitura. Os valores atuais do Open-Meteo são estimativas meteorológicas por modelos, não medições de um termômetro em cada cidade.
+A ficha do destino segue o Figma, com foto, descrição, coordenadas e dois botões. A previsão aparece somente na tela de clima, vem das coordenadas da cidade, em Celsius, com horário local da leitura. Os valores atuais do Open-Meteo são estimativas meteorológicas por modelos, não medições de um termômetro em cada cidade.
 
 ## Como rodar
 
@@ -21,6 +21,8 @@ npx expo start     # sobe o servidor de desenvolvimento
 
 Aparece um QR code no terminal. No Android, leia com o Expo Go; no iPhone, com a câmera.
 O celular e o computador precisam estar na mesma rede Wi-Fi.
+
+Para abrir o projeto nativo no Android Studio e gerar APK/AAB, veja [ANDROID_STUDIO.md](ANDROID_STUDIO.md). A imagem de abertura do Android é `assets/Capa-app.png`, configurada pelo plugin `expo-splash-screen` em `app.json`.
 
 Outros comandos:
 
@@ -69,8 +71,8 @@ antes de ser usada (`src/lib/openMeteo.ts`). Os favoritos ficam no próprio celu
 consulta o Wikidata (propriedade P1566 → imagem P18) e depois o Wikimedia Commons (miniatura de
 1280px, autor e licença), em `src/lib/placePhotos.ts`. Os pedidos dos cards de uma mesma lista são
 agrupados em 2 requisições e o resultado fica em cache. Enquanto a foto carrega, ou se a cidade não
-tiver foto, aparece uma das fotos editoriais do design, sempre a mesma para o mesmo destino. A tela do
-destino mostra autor e licença da foto.
+tiver foto, aparece uma das fotos editoriais do design, sempre a mesma para o mesmo destino. O
+serviço preserva autor e licença como metadados, sem adicionar controles à ficha do destino.
 
 **Busca.** Espera 350ms depois da última tecla (*debounce*) e cancela a busca anterior quando
 a pessoa continua digitando. Requisições têm timeout de 10s; sem internet, abre a tela 08.

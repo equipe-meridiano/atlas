@@ -1,16 +1,14 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BackLink, Button, Skeleton } from '@/components';
+import { BackLink, Button } from '@/components';
 import { FocusStatusBar } from '@/components/FocusStatusBar';
 import { PlaceNotFound } from '@/components/PlaceNotFound';
 import { defaultTagline, placeFromParams, placeToParams } from '@/data/place';
 import { useFavorites } from '@/lib/favorites';
-import { formatLatitude, formatLongitude, formatLocalTime, formatTemperature } from '@/lib/format';
-import { useForecast } from '@/lib/useForecast';
-import { describeWeather } from '@/lib/weatherCodes';
+import { formatLatitude, formatLongitude } from '@/lib/format';
 import { durations, transitionDuration, useReduceMotion } from '@/lib/motion';
 import { usePlacePhoto } from '@/lib/usePlacePhoto';
 import { colors, displayMaxScale, radius, screenPadding, type } from '@/theme';
@@ -25,7 +23,6 @@ export default function DestinationScreen() {
   const place = placeFromParams(useLocalSearchParams());
   const { isSaved, toggle, storageError } = useFavorites();
   const photo = usePlacePhoto(place);
-  const { state, refresh } = useForecast(place);
   const reduceMotion = useReduceMotion();
 
   if (!place) return <PlaceNotFound />;
@@ -58,22 +55,6 @@ export default function DestinationScreen() {
           {place.name}
         </Text>
         <Text style={[type.bodyLarge, styles.muted, styles.country]}>{place.country}</Text>
-        <View style={styles.weather} accessibilityLiveRegion="polite">
-          <Text style={[type.caption, styles.muted]}>CLIMA ATUAL · °C</Text>
-          {state.status === 'success' ? (
-            <>
-              <Text style={[type.placeTitle, styles.ink]}>{formatTemperature(state.forecast.temperature)}</Text>
-              <Text style={[type.body, styles.ink]}>{describeWeather(state.forecast.weatherCode)}</Text>
-              <Text style={[type.note, styles.muted]}>
-                {`Open-Meteo · ${formatLocalTime(state.forecast.time)} no destino`}
-              </Text>
-            </>
-          ) : state.status === 'loading' ? (
-            <Skeleton style={styles.weatherSkeleton} />
-          ) : (
-            <Button variant="secondary" label="Tentar carregar o clima" onPress={refresh} />
-          )}
-        </View>
         <Text style={[type.lead, styles.ink, styles.lead]}>{place.tagline ?? defaultTagline}</Text>
 
         <View style={styles.facts} accessible>
@@ -100,13 +81,6 @@ export default function DestinationScreen() {
           </Text>
         ) : null}
 
-        <Text style={[type.note, styles.muted, styles.credit]}>
-          {photo.credit ? `Foto: ${photo.credit}` : photo.status === 'loading'
-            ? 'Buscando foto real da cidade. Imagem temporária ilustrativa.'
-            : 'Foto da cidade indisponível. Imagem ilustrativa.'}
-        </Text>
-        {photo.sourceUrl ? <Button variant="secondary" label="Fonte e licença da foto"
-          onPress={() => { void Linking.openURL(photo.sourceUrl!).catch(() => {}); }} style={styles.secondary} /> : null}
       </View>
     </ScrollView>
   );
@@ -128,12 +102,9 @@ const styles = StyleSheet.create({
   ink: { color: colors.ink },
   muted: { color: colors.muted },
   country: { marginTop: 8 },
-  weather: { marginTop: 24, padding: 20, gap: 8, backgroundColor: colors.ice, borderRadius: radius.card },
-  weatherSkeleton: { height: 80, width: '75%' },
   lead: { marginTop: 28 },
   facts: { marginTop: 22 },
   primary: { marginTop: 37 },
   secondary: { marginTop: 12 },
   warning: { marginTop: 12 },
-  credit: { marginTop: 28 },
 });

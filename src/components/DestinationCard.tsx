@@ -37,13 +37,6 @@ export function DestinationCard({ place, onPress }: Props) {
         contentFit="cover"
         accessible={false}
       />
-      {photo.status !== 'ready' ? (
-        <View style={styles.photoLabel}>
-          <Text style={[type.note, styles.country]}>
-            {photo.status === 'loading' ? 'Buscando foto da cidade…' : 'Foto ilustrativa'}
-          </Text>
-        </View>
-      ) : null}
       <View style={styles.text}>
         <Text style={[type.cardTitle, styles.name]} numberOfLines={1}>
           {place.name}
@@ -79,8 +72,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   photo: { height: 176, width: '100%' },
-  photoLabel: { position: 'absolute', top: 12, left: 12, right: 12, alignSelf: 'flex-start',
-    backgroundColor: 'rgba(16, 34, 40, 0.85)', borderRadius: 8, padding: 8 },
   text: { paddingHorizontal: 16, paddingTop: 12, gap: 6 },
   name: { color: colors.white },
   country: { color: colors.ice },

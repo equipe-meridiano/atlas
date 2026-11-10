@@ -11,6 +11,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.equipemeridiano.atlas",
       "adaptiveIcon": {
         "backgroundColor": "#192C35",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -32,7 +33,13 @@
         {
           "image": "./assets/splash-icon.png",
           "imageWidth": 160,
-          "backgroundColor": "#192C35"
+          "backgroundColor": "#192C35",
+          "android": {
+            "image": "./assets/Capa-app.png",
+            "imageWidth": 280,
+            "resizeMode": "contain",
+            "backgroundColor": "#112B36"
+          }
         }
       ]
     ],
