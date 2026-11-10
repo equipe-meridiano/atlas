@@ -16,7 +16,11 @@ export function requestRetry(origin: RetryOrigin) {
 
 export function useRetryListener(origin: RetryOrigin, onRetry: () => void) {
   const callback = useRef(onRetry);
-  callback.current = onRetry;
+
+  // Guarda sempre a versão mais nova do callback, sem refazer a inscrição.
+  useEffect(() => {
+    callback.current = onRetry;
+  });
 
   useEffect(() => {
     const listener = () => callback.current();

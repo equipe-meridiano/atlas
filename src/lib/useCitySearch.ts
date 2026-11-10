@@ -16,42 +16,49 @@ export type SearchState =
   | { status: 'offline'; query: string }
   | { status: 'error'; query: string };
 
+type Finished = Exclude<SearchState, { status: 'idle' } | { status: 'loading' }>;
+
 /**
  * Busca de cidades com debounce de 350ms e cancelamento.
  * Cada nova busca cancela a anterior (AbortController), para que uma resposta
  * atrasada de "Rey" nunca apareça por cima do resultado de "Reykjavík".
+ *
+ * O estado "carregando" não é gravado: enquanto a resposta da busca atual
+ * (texto + tentativa) não chega, a busca está carregando.
  */
 export function useCitySearch(text: string) {
   const query = useDebouncedValue(text.trim());
-  const [state, setState] = useState<SearchState>({ status: 'idle' });
   const [attempt, setAttempt] = useState(0);
+  const [finished, setFinished] = useState<{ key: string; state: Finished } | null>(null);
+  const key = `${attempt}:${query}`;
+  const active = query.length >= MIN_QUERY_LENGTH;
 
   useEffect(() => {
-    if (query.length < MIN_QUERY_LENGTH) {
-      setState({ status: 'idle' });
-      return;
-    }
-
+    if (!active) return;
     const controller = new AbortController();
-    setState({ status: 'loading', query });
 
     searchCities(query, controller.signal)
       .then((results) => {
-        setState(results.length > 0 ? { status: 'success', query, results } : { status: 'empty', query });
+        setFinished({
+          key,
+          state: results.length > 0 ? { status: 'success', query, results } : { status: 'empty', query },
+        });
       })
       .catch((error: unknown) => {
         if (isApiError(error, 'aborted')) return;
-        setState({ status: isApiError(error, 'offline') ? 'offline' : 'error', query });
+        setFinished({ key, state: { status: isApiError(error, 'offline') ? 'offline' : 'error', query } });
       });
 
     return () => controller.abort();
-  }, [query, attempt]);
+  }, [active, query, key]);
 
   /** Refaz a última busca (botões "Tentar novamente"). */
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
-  /** O texto digitado ainda não virou busca (debounce rodando). */
-  const pending = text.trim() !== query;
+  let state: SearchState;
+  if (!active) state = { status: 'idle' };
+  else if (finished?.key === key) state = finished.state;
+  else state = { status: 'loading', query };
 
-  return { state, retry, pending };
+  return { state, retry };
 }

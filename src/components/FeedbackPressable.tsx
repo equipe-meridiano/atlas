@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useState } from 'react';
 import {
   Animated,
   Pressable,
@@ -22,7 +22,7 @@ type Props = Omit<PressableProps, 'style'> & {
  * Todo elemento tocável do app usa este componente.
  */
 export function FeedbackPressable({ style, onPressIn, onPressOut, ...rest }: Props) {
-  const opacity = useRef(new Animated.Value(1)).current;
+  const [opacity] = useState(() => new Animated.Value(1));
 
   function animateTo(value: number) {
     Animated.timing(opacity, {
