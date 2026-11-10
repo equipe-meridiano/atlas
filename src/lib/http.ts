@@ -33,10 +33,15 @@ type Options = {
   /** Sinal de quem chamou, para cancelar de fora. */
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** Cabeçalhos extras (ex.: User-Agent exigido pelas APIs do Wikimedia). */
+  headers?: Record<string, string>;
 };
 
 /** GET que devolve o JSON da resposta (ainda sem validar o formato). */
-export async function getJson(url: string, { signal, timeoutMs = DEFAULT_TIMEOUT_MS }: Options = {}): Promise<unknown> {
+export async function getJson(
+  url: string,
+  { signal, timeoutMs = DEFAULT_TIMEOUT_MS, headers }: Options = {},
+): Promise<unknown> {
   const controller = new AbortController();
   let timedOut = false;
 
@@ -52,7 +57,10 @@ export async function getJson(url: string, { signal, timeoutMs = DEFAULT_TIMEOUT
   try {
     let response: Response;
     try {
-      response = await fetch(url, { signal: controller.signal, headers: { Accept: 'application/json' } });
+      response = await fetch(url, {
+        signal: controller.signal,
+        headers: { Accept: 'application/json', ...headers },
+      });
     } catch {
       if (timedOut) throw new ApiError('offline', 'A API demorou demais para responder.');
       if (controller.signal.aborted) throw new ApiError('aborted', 'Requisição cancelada.');

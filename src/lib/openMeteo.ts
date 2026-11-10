@@ -1,5 +1,4 @@
 import type { Place } from '@/data/place';
-import type { PhotoKey } from '@/data/photos';
 import { ApiError, getJson } from './http';
 
 /**
@@ -49,16 +48,8 @@ function numberArray(value: unknown, length: number): number[] | null {
 
 // ---------- geocoding ----------
 
-/**
- * Alterna as duas fotos editoriais na lista: o 1º resultado recebe as montanhas (como no Figma),
- * o 2º o lago, e assim por diante, para cards vizinhos nunca repetirem a foto.
- */
-function photoFor(position: number): PhotoKey {
-  return position % 2 === 0 ? 'montanhas' : 'lago';
-}
-
-/** Converte um item da resposta em Place (sem foto ainda). Itens incompletos viram null. */
-function parseGeocodingResult(item: unknown): Omit<Place, 'photo'> | null {
+/** Converte um item da resposta em Place. Itens incompletos viram null. */
+function parseGeocodingResult(item: unknown): Place | null {
   if (!isObject(item)) return null;
   const { id, name, latitude, longitude, timezone, country, admin1, feature_code } = item;
 
@@ -86,8 +77,7 @@ export function parseGeocoding(json: unknown): Place[] {
 
   return json.results
     .map(parseGeocodingResult)
-    .filter((place): place is Omit<Place, 'photo'> => place !== null)
-    .map((place, position) => ({ ...place, photo: photoFor(position) }));
+    .filter((place): place is Place => place !== null);
 }
 
 export async function searchCities(name: string, signal?: AbortSignal): Promise<Place[]> {
@@ -139,6 +129,8 @@ export async function getForecast(
     current: 'temperature_2m,apparent_temperature,weather_code,wind_speed_10m',
     daily: 'weather_code,temperature_2m_max,temperature_2m_min',
     timezone: 'auto',
+    temperature_unit: 'celsius',
+    wind_speed_unit: 'kmh',
     forecast_days: '3',
   });
   const json = await getJson(`${FORECAST_URL}?${query.toString()}`, { signal });

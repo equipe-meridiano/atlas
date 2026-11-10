@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useReduceMotion } from '@/lib/motion';
@@ -16,7 +16,7 @@ type Props = {
  */
 export function Skeleton({ style, tone = 'light' }: Props) {
   const reduceMotion = useReduceMotion();
-  const opacity = useRef(new Animated.Value(1)).current;
+  const [opacity] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     if (reduceMotion) {

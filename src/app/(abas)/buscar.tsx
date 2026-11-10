@@ -112,7 +112,6 @@ type EmptyProps = { state: SearchState; onTryAnother: () => void; onRetry: () =>
 function EmptyArea({ state, onTryAnother, onRetry }: EmptyProps) {
   switch (state.status) {
     case 'idle':
-    case 'offline':
       return (
         <Text style={[type.body, styles.muted, styles.hint]}>
           {`Digite pelo menos ${MIN_QUERY_LENGTH} letras do nome de uma cidade.`}
@@ -133,6 +132,16 @@ function EmptyArea({ state, onTryAnother, onRetry }: EmptyProps) {
           text={'Confira o nome da cidade ou tente\numa cidade próxima.'}
           action="Tentar outra busca"
           onPress={onTryAnother}
+        />
+      );
+    case 'offline':
+      // A tela "O caminho pausou" já abriu; isto aparece se a pessoa voltar sem tentar de novo.
+      return (
+        <EmptyMessage
+          title={'O caminho\npausou.'}
+          text={'Verifique sua conexão e tente de novo.'}
+          action="Tentar novamente"
+          onPress={onRetry}
         />
       );
     case 'error':

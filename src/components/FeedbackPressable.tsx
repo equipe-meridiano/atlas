@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useState } from 'react';
 import {
   Animated,
   Pressable,
@@ -8,7 +8,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { durations, pressedOpacity } from '@/lib/motion';
+import { durations, pressedOpacity, useReduceMotion } from '@/lib/motion';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -22,12 +22,14 @@ type Props = Omit<PressableProps, 'style'> & {
  * Todo elemento tocável do app usa este componente.
  */
 export function FeedbackPressable({ style, onPressIn, onPressOut, ...rest }: Props) {
-  const opacity = useRef(new Animated.Value(1)).current;
+  const [opacity] = useState(() => new Animated.Value(1));
+  const reduceMotion = useReduceMotion();
 
   function animateTo(value: number) {
+    opacity.stopAnimation();
     Animated.timing(opacity, {
       toValue: value,
-      duration: durations.toque,
+      duration: reduceMotion ? 0 : durations.toque,
       useNativeDriver: true,
     }).start();
   }
