@@ -7,6 +7,11 @@ describe('lugares salvos', () => {
     expect(parseStoredPlaces(raw)).toEqual([featured.hero]);
   });
 
+  it('converte ids antigos dos destaques e remove repetidos', () => {
+    const legacy = { ...featured.hero, id: 'destaque-reykjavik', photo: 'montanhas' };
+    expect(parseStoredPlaces(JSON.stringify([legacy, featured.hero]))).toEqual([featured.hero]);
+  });
+
   it('não quebra com armazenamento vazio ou inválido', () => {
     expect(parseStoredPlaces(null)).toEqual([]);
     expect(parseStoredPlaces('{não é json')).toEqual([]);
